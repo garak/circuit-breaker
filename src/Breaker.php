@@ -15,7 +15,7 @@
 
 namespace Eljam\CircuitBreaker;
 
-use Symfony\Component\Cache\Adapter\AbstractAdapter;
+use Symfony\Component\Cache\Adapter\AdapterInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Eljam\CircuitBreaker\Event\CircuitEvent;
 use Eljam\CircuitBreaker\Event\CircuitEvents;
@@ -24,7 +24,7 @@ use Eljam\CircuitBreaker\Handler\Handler;
 use Eljam\CircuitBreaker\Handler\HandlerInterface;
 use Eljam\CircuitBreaker\Util\Utils;
 use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
@@ -35,7 +35,7 @@ class Breaker
     /**
      * $store.
      *
-     * @var AbstractAdapter
+     * @var AdapterInterface
      */
     protected $store;
 
@@ -72,14 +72,14 @@ class Breaker
      *
      * @param string                   $name
      * @param array                    $config
-     * @param Cache                    $store
+     * @param AdapterInterface         $store
      * @param HandlerInterface         $handler
      * @param EventDispatcherInterface $dispatcher
      */
     public function __construct(
         $name,
         array $config = [],
-        AbstractAdapter $store = null,
+        AdapterInterface $store = null,
         HandlerInterface $handler = null,
         EventDispatcherInterface $dispatcher = null
     ) {
@@ -190,7 +190,7 @@ class Breaker
     {
         $open = false;
         if ($this->handler->isOpen($circuit)) {
-            $this->dispatcher->dispatch(CircuitEvents::OPEN, (new CircuitEvent($circuit)));
+            $this->dispatcher->dispatch(new CircuitEvent($circuit), CircuitEvents::OPEN);
 
             $open = true;
         }
@@ -208,7 +208,7 @@ class Breaker
     protected function isHalfOpen(Circuit $circuit)
     {
         if ($this->handler->isHalfOpen($circuit)) {
-            $this->dispatcher->dispatch(CircuitEvents::HALF_OPEN, (new CircuitEvent($circuit)));
+            $this->dispatcher->dispatch(new CircuitEvent($circuit), CircuitEvents::HALF_OPEN);
 
             return true;
         }
@@ -225,7 +225,7 @@ class Breaker
     {
         $circuit->resetFailure();
 
-        $this->dispatcher->dispatch(CircuitEvents::SUCCESS, (new CircuitEvent($circuit)));
+        $this->dispatcher->dispatch(new CircuitEvent($circuit), CircuitEvents::SUCCESS);
         $this->writeToStore($circuit);
     }
 
@@ -239,7 +239,7 @@ class Breaker
         $circuit->incrementFailure();
         $circuit->setLastFailure(time());
 
-        $this->dispatcher->dispatch(CircuitEvents::FAILURE, (new CircuitEvent($circuit)));
+        $this->dispatcher->dispatch(new CircuitEvent($circuit), CircuitEvents::FAILURE);
         $this->writeToStore($circuit);
     }
 
@@ -253,6 +253,7 @@ class Breaker
     protected function loadCircuit($name)
     {
         $cacheItem = $this->store->getItem($name);
+
         if ($cacheItem->isHit()) {
             return $cacheItem->get();
         }
