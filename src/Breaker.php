@@ -171,7 +171,7 @@ class Breaker
     protected function isClosed(Circuit $circuit)
     {
         if ($this->handler->isClosed($circuit)) {
-            $this->dispatcher->dispatch(CircuitEvents::CLOSED, (new CircuitEvent($circuit)));
+            $this->dispatcher->dispatch(new CircuitEvent($circuit), CircuitEvents::CLOSED);
 
             return true;
         }
